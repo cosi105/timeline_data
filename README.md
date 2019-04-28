@@ -8,24 +8,14 @@ Production deployment: https://nano-twitter-timeline-data.herokuapp.com/
 [![Maintainability](https://api.codeclimate.com/v1/badges/684bc84fd01743745a03/maintainability)](https://codeclimate.com/github/cosi105/timeline_data/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/684bc84fd01743745a03/test_coverage)](https://codeclimate.com/github/cosi105/timeline_data/test_coverage)
 
-## Subscribed Queues
+## Message Queues
 
-### new\_tweet.follower\_ids
+| Relation | Queue Name | Payload | Interaction |
+| :------- | :--------- | :------ |:--
+| Subscribes to | `new_tweet.follower_ids` | `{tweet_id, follower_ids }` | Adds the given tweet ID to the timeline of every user in `follower_ids`, as happens when a user with many followers posts a tweet.
+| Subscribes to | `new_follow.timeline_data` | `{follower_id, tweet_ids}` | Adds all of the given tweet IDs to the timeline of the user whose ID is `follower_id`, as happens when a user follows a person who has posted many tweets.
+| Publishes to | `new_tweet.sorted_tweets` | `{user_id, sorted_tweet_ids}` | Publishes every timeline that has just been modified, so the Timeline HTML service can update.
 
-- tweet_id
-- follower_ids
-
-### new\_follow.timeline\_data
-
-- follower_id
-- tweet_ids
-
-## Published Queues
-
-### new\_tweet.sorted\_tweets
-
-- user_id
-- sorted\_tweet\_ids
 
 ## Caches
 
