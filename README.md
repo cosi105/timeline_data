@@ -20,3 +20,7 @@ Production deployment: https://nano-twitter-timeline-data.herokuapp.com/
 ## Caches
 
 ### user\_id: sorted\_tweet\_ids
+
+## Seeding
+
+This service subscribes to the `tweet.data.seed` queue, which the main NanoTwitter app uses to publish maps of users to the IDs of tweets in their timelines, enabling this service to build its cache.
