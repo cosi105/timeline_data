@@ -18,18 +18,18 @@ end
 
 rabbit.start
 channel = rabbit.create_channel
-html_fanout = channel.queue('new_tweet.html_fanout')
 
-# Takes a new Tweet's html payload and updates its followers' cached Timeline HTML.
-html_fanout.subscribe(block: false) do |delivery_info, properties, body|
-  fanout_html(JSON.parse(body))
+follower_ids = channel.queue('new_tweet.follower_ids')
+
+# Takes a new Tweet's follower_ids payload and updates its followers' cached Timeline Tweet IDs.
+follower_ids.subscribe(block: false) do |delivery_info, properties, body|
+  fanout_to_timelines(JSON.parse(body))
 end
 
-# Prepend the new Tweet's HTML to each follower's cached Timeline HTML.
-def fanout_html(body)
-  tweet_html = body['tweet_html']
-  body['follower_ids'].each do |id|
-    timeline_html = REDIS.get(id.to_i)
-    REDIS.set(id.to_i, tweet_html + timeline_html)
+# Adds a new Tweet's ID to each follower's Timeline Tweet IDs in Redis.
+def fanout_to_timelines(body)
+  tweet_id = body['tweet_id'].to_i
+  body['follower_ids'].each do |follower_id|
+    REDIS.zadd(follower_id, tweet_id, tweet_id) # 1st tweet_id param is set entry's sorting "score."
   end
 end
