@@ -21,6 +21,12 @@ channel = rabbit.create_channel
 
 follower_ids = channel.queue('new_tweet.follower_ids')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
+seed = channel.queue('timeline.data.seed')
+
+seed.subscribe(block: false) do |delivery_info, properties, body|
+  REDIS.flushall
+  seed_to_timeline(JSON.parse(body))
+end
 
 # Takes a new Tweet's follower_ids payload and updates its followers' cached Timeline Tweet IDs.
 follower_ids.subscribe(block: false) do |delivery_info, properties, body|
@@ -29,6 +35,14 @@ end
 
 new_follow_timeline_data.subscribe(block: false) do |delivery_info, properties, body|
   merge_into_timeline(JSON.parse(body))
+end
+
+def seed_to_timeline(body)
+  body.each do |tp|
+    owner_id = tp['owner_id'].to_i
+    tweet_id = tp['tweet_id'].to_i
+    REDIS.zadd(owner_id.to_i, tweet_id, tweet_id)
+  end
 end
 
 # Adds a new Tweet's ID to each follower's Timeline Tweet IDs in Redis.
@@ -42,7 +56,9 @@ end
 # Adds new followee's Tweets to follower's imeline Tweet IDs in Redis.
 def merge_into_timeline(body)
   follower_id = body['follower_id'].to_i
+  tweet_entries = []
   body['followee_tweets'].each do |tweet_id|
-    Redis.zadd(follower_id, tweet_id.to_i, tweet_id.to_i) # Using tweet_id as sorting "score" preserves
-  end                                                     # chronological order.
+    tweet_entries << [tweet_id.to_i, tweet_id.to_i] # Tweet_id as sorting "score" preserves chronology
+  end
+  Redis.zadd(follower_id, tweet_entries) # Bulk add
 end
