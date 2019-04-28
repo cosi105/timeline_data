@@ -11,18 +11,16 @@ if Sinatra::Base.production?
   end
   rabbit = Bunny.new(ENV['CLOUDAMQP_URL'])
 else
-  Dotenv.load 'local_vars.env'
   REDIS = Redis.new
   rabbit = Bunny.new(automatically_recover: false)
 end
 
 rabbit.start
 channel = rabbit.create_channel
-rabbit_exchange = channel.default_exchange
+RABBIT_EXCHANGE = channel.default_exchange
 
 follower_ids = channel.queue('new_tweet.follower_ids')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
-new_follow_sorted_tweets = channel.queue('new_follow.sorted_tweets')
 seed = channel.queue('tweet.data.seed')
 
 seed.subscribe(block: false) do |delivery_info, properties, body|
@@ -43,8 +41,8 @@ def seed_to_timelines(body)
   body.each do |item|
     owner_id = item['owner_id'].to_i
     sorted_tweet_ids = []
-    item['sorted_tweets'].each { |t| sorted_tweet_ids << t.id.to_i }
-    REDIS.zadd(owner_id.to_i, sorted_tweet_ids)
+    item['sorted_tweets'].each { |t| sorted_tweet_ids << t.to_i }
+    REDIS.zadd(owner_id.to_i, sorted_tweet_ids.map { |i| [i, i] })
   end
 end
 
@@ -63,10 +61,10 @@ def merge_into_timeline(body)
   body['followee_tweets'].each do |tweet_id|
     tweet_entries << [tweet_id.to_i, tweet_id.to_i] # Tweet_id as sorting "score" preserves chronology
   end
-  Redis.zadd(follower_id, tweet_entries) # Bulk add
+  REDIS.zadd(follower_id, tweet_entries) # Bulk add
   payload = {
     follower_id: follower_id,
-    sorted_tweet_ids: Redis.zrange(follower_id, 0, -1)
+    sorted_tweet_ids: REDIS.zrange(follower_id, 0, -1)
   }.to_json
-  rabbit_exchange.publish(payload, routing_key: new_follow_sorted_tweets)
+  RABBIT_EXCHANGE.publish(payload, routing_key: 'new_follow.sorted_tweets')
 end
