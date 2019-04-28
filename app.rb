@@ -21,7 +21,7 @@ channel = rabbit.create_channel
 
 follower_ids = channel.queue('new_tweet.follower_ids')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
-seed = channel.queue('timeline.data.seed')
+seed = channel.queue('timeline.seed')
 
 seed.subscribe(block: false) do |delivery_info, properties, body|
   REDIS.flushall
@@ -37,7 +37,7 @@ new_follow_timeline_data.subscribe(block: false) do |delivery_info, properties, 
   merge_into_timeline(JSON.parse(body))
 end
 
-def seed_to_timeline(body)
+def seed_to_timelines(body)
   body.each do |tp|
     owner_id = tp['owner_id'].to_i
     tweet_id = tp['tweet_id'].to_i
