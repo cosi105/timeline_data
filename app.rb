@@ -11,7 +11,7 @@ if Sinatra::Base.production?
   end
   rabbit = Bunny.new(ENV['CLOUDAMQP_URL'])
 else
-  REDIS = Redis.new
+  REDIS = Redis.new(port: 6386)
   rabbit = Bunny.new(automatically_recover: false)
 end
 
@@ -21,7 +21,7 @@ RABBIT_EXCHANGE = channel.default_exchange
 
 follower_ids = channel.queue('new_tweet.follower_ids')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
-seed = channel.queue('tweet.data.seed')
+seed = channel.queue('timeline.data.seed.timeline_data')
 
 seed.subscribe(block: false) do |delivery_info, properties, body|
   REDIS.flushall
@@ -38,11 +38,11 @@ new_follow_timeline_data.subscribe(block: false) do |delivery_info, properties, 
 end
 
 def seed_to_timelines(body)
-  body.each do |item|
-    owner_id = item['owner_id'].to_i
-    sorted_tweet_ids = []
-    item['sorted_tweets'].each { |t| sorted_tweet_ids << t.to_i }
-    REDIS.zadd(owner_id.to_i, sorted_tweet_ids.map { |i| [i, i] })
+  owner_id = body['owner_id'].to_i
+  unless owner_id == -1
+    sorted_tweet_ids = body['sorted_tweets'].map { |t| t['tweet_id'].to_i }
+    sorted_tweet_ids.each { |i| REDIS.zadd(owner_id.to_i, i, i) }
+    puts "Seeded timeline for user #{owner_id}"
   end
 end
 

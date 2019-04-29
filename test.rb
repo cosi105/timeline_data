@@ -27,7 +27,7 @@ def publish_new_follow(payload)
   sleep 3
 end
 
-describe 'NanoTwitter' do
+describe 'NanoTwitter Timeline Data' do
   include Rack::Test::Methods
   before do
     REDIS.flushall
@@ -74,33 +74,31 @@ describe 'NanoTwitter' do
   end
 
   it 'can seed many timelines' do
-    payload = [
+    [
       {
         owner_id: 2,
-        sorted_tweets: [1, 2, 3]
+        sorted_tweets: [1, 2, 3].map { |i| { tweet_id: i } }
       }, {
         owner_id: 3,
-        sorted_tweets: [4, 6, 7, 8]
+        sorted_tweets: [4, 6, 7, 8].map { |i| { tweet_id: i } }
       }
-    ].to_json
-    seed_to_timelines(JSON.parse(payload))
+    ].each { |timeline| seed_to_timelines(JSON.parse(timeline.to_json)) }
     REDIS.keys.sort.must_equal %w[2 3]
     get_timeline(2).must_equal %w[1 2 3]
     get_timeline(3).must_equal %w[4 6 7 8]
   end
 
-  it 'can seed many timelines' do
-    payload = [
+  it 'can seed many timelines from queue' do
+    [
       {
         owner_id: 2,
-        sorted_tweets: [1, 2, 3]
+        sorted_tweets: [1, 2, 3].map { |i| { tweet_id: i } }
       }, {
         owner_id: 3,
-        sorted_tweets: [4, 6, 7, 8]
+        sorted_tweets: [4, 6, 7, 8].map { |i| { tweet_id: i } }
       }
-    ].to_json
-    RABBIT_EXCHANGE.publish(payload, routing_key: 'tweet.data.seed')
-    sleep 3
+    ].each { |timeline| RABBIT_EXCHANGE.publish(timeline.to_json, routing_key: 'timeline.data.seed.timeline_data') }
+    sleep 10
     REDIS.keys.sort.must_equal %w[2 3]
     get_timeline(2).must_equal %w[1 2 3]
     get_timeline(3).must_equal %w[4 6 7 8]
