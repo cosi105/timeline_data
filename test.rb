@@ -55,8 +55,10 @@ describe 'NanoTwitter Timeline Data' do
 
   it 'can add many new tweets' do
     payload = {
-      follower_id: 2,
-      followee_tweets: [2, 1, 3]
+      follow_params: {
+        follower_id: 2
+      },
+      followee_tweet_ids: [2, 1, 3]
     }.to_json
     merge_into_timeline(JSON.parse(payload))
     REDIS.keys.must_equal ['2']
@@ -65,8 +67,10 @@ describe 'NanoTwitter Timeline Data' do
 
   it 'can add many new tweets from queue' do
     payload = {
-      follower_id: 2,
-      followee_tweets: [2, 1, 3]
+      follow_params: {
+        follower_id: 2
+      },
+      followee_tweet_ids: [2, 1, 3]
     }.to_json
     publish_new_follow(payload)
     REDIS.keys.must_equal ['2']
