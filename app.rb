@@ -8,12 +8,15 @@ Bundler.require
 
 set :port, 8082 unless Sinatra::Base.production?
 
+def redis_from_uri(key)
+  uri = URI.parse(ENV[key])
+  Redis.new(host: uri.host, port: uri.port, password: uri.password)
+end
+
 if Sinatra::Base.production?
   configure do
     REDIS_EVEN = redis_from_uri('REDIS_EVEN_URL')
     REDIS_ODD = redis_from_uri('REDIS_ODD_URL')
-    redis_uri = URI.parse(ENV['REDIS_URL'])
-    REDIS = Redis.new(host: redis_uri.host, port: redis_uri.port, password: redis_uri.password)
   end
   rabbit = Bunny.new(ENV['CLOUDAMQP_URL'])
 else
