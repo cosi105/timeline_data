@@ -15,13 +15,11 @@ end
 
 if Sinatra::Base.production?
   configure do
-    REDIS_EVEN = redis_from_uri('REDIS_EVEN_URL')
-    REDIS_ODD = redis_from_uri('REDIS_ODD_URL')
+    SHARDS = [0, 1, 2, 3].map { |i| redis_from_uri("REDIS_#{i}_URL") }
   end
   rabbit = Bunny.new(ENV['CLOUDAMQP_URL'])
 else
-  REDIS_EVEN = Redis.new(port: 6386)
-  REDIS_ODD = Redis.new(port: 6388)
+  SHARDS = [6386, 6388, 6389, 6390].map { |i| Redis.new(port: i) }
   rabbit = Bunny.new(automatically_recover: false)
 end
 
@@ -50,7 +48,7 @@ new_follow_timeline_data.subscribe(block: false) do |delivery_info, properties, 
 end
 
 def get_shard(owner_id)
-  owner_id.even? ? REDIS_EVEN : REDIS_ODD
+  SHARDS[owner_id % 4]
 end
 
 def seed_to_timelines(body)

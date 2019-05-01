@@ -30,7 +30,7 @@ end
 describe 'NanoTwitter Timeline Data' do
   include Rack::Test::Methods
   before do
-    [REDIS_EVEN, REDIS_ODD].each(&:flushall)
+    SHARDS.each(&:flushall)
   end
 
   it "can put a new tweet in a user's timeline" do
@@ -39,7 +39,7 @@ describe 'NanoTwitter Timeline Data' do
       follower_ids: [2]
     }.to_json
     fanout_to_timelines(JSON.parse(payload))
-    REDIS_EVEN.keys.must_equal ['2']
+    SHARDS[2].keys.must_equal ['2']
     get_timeline(2).must_equal ['1']
   end
 
@@ -49,7 +49,7 @@ describe 'NanoTwitter Timeline Data' do
       follower_ids: [2]
     }.to_json
     publish_new_tweet(payload)
-    REDIS_EVEN.keys.must_equal ['2']
+    SHARDS[2].keys.must_equal ['2']
     get_timeline(2).must_equal ['1']
   end
 
@@ -61,7 +61,7 @@ describe 'NanoTwitter Timeline Data' do
       followee_tweet_ids: [2, 1, 3]
     }.to_json
     merge_into_timeline(JSON.parse(payload))
-    REDIS_EVEN.keys.must_equal ['2']
+    SHARDS[2].keys.must_equal ['2']
     get_timeline(2).must_equal %w[1 2 3]
   end
 
@@ -73,7 +73,7 @@ describe 'NanoTwitter Timeline Data' do
       followee_tweet_ids: [2, 1, 3]
     }.to_json
     publish_new_follow(payload)
-    REDIS_EVEN.keys.must_equal ['2']
+    SHARDS[2].keys.must_equal ['2']
     get_timeline(2).must_equal %w[1 2 3]
   end
 
@@ -87,8 +87,8 @@ describe 'NanoTwitter Timeline Data' do
         sorted_tweets: [4, 6, 7, 8].map { |i| { tweet_id: i } }
       }
     ].each { |timeline| seed_to_timelines(JSON.parse(timeline.to_json)) }
-    REDIS_EVEN.keys.must_equal ['2']
-    REDIS_ODD.keys.must_equal ['3']
+    SHARDS[2].keys.must_equal ['2']
+    SHARDS[3].keys.must_equal ['3']
     get_timeline(2).must_equal %w[1 2 3]
     get_timeline(3).must_equal %w[4 6 7 8]
   end
@@ -104,8 +104,8 @@ describe 'NanoTwitter Timeline Data' do
       }
     ].each { |timeline| RABBIT_EXCHANGE.publish(timeline.to_json, routing_key: 'timeline.data.seed.timeline_data') }
     sleep 10
-    REDIS_EVEN.keys.must_equal ['2']
-    REDIS_ODD.keys.must_equal ['3']
+    SHARDS[2].keys.must_equal ['2']
+    SHARDS[3].keys.must_equal ['3']
     get_timeline(2).must_equal %w[1 2 3]
     get_timeline(3).must_equal %w[4 6 7 8]
   end
