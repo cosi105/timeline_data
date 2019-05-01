@@ -26,11 +26,13 @@ RABBIT_EXCHANGE = channel.default_exchange
 follower_ids = channel.queue('new_tweet.follower_ids')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
 seed = channel.queue('timeline.data.seed.timeline_data')
+cache_purge = channel.queue('cache.purge.timeline_data')
 
 seed.subscribe(block: false) do |delivery_info, properties, body|
-  REDIS.flushall
   seed_to_timelines(JSON.parse(body))
 end
+
+cache_purge.subscribe(block: false) { REDIS.flushall }
 
 # Takes a new Tweet's follower_ids payload and updates its followers' cached Timeline Tweet IDs.
 follower_ids.subscribe(block: false) do |delivery_info, properties, body|
