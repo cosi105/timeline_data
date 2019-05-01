@@ -36,7 +36,7 @@ seed.subscribe(block: false) do |delivery_info, properties, body|
   seed_to_timelines(JSON.parse(body))
 end
 
-cache_purge.subscribe(block: false) { [REDIS_EVEN, REDIS_ODD].each(&:flushall) }
+cache_purge.subscribe(block: false) { SHARDS.each(&:flushall) }
 
 # Takes a new Tweet's follower_ids payload and updates its followers' cached Timeline Tweet IDs.
 follower_ids.subscribe(block: false) do |delivery_info, properties, body|
