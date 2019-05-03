@@ -18,7 +18,7 @@ def get_timeline(owner_id)
 end
 
 def publish_new_tweet(payload)
-  RABBIT_EXCHANGE.publish(payload, routing_key: 'new_tweet.follower_ids')
+  RABBIT_EXCHANGE.publish(payload, routing_key: 'new_tweet.follower_ids.timeline_data')
   sleep 3
 end
 
@@ -108,5 +108,17 @@ describe 'NanoTwitter Timeline Data' do
     SHARDS[3].keys.must_equal ['3']
     get_timeline(2).must_equal %w[1 2 3]
     get_timeline(3).must_equal %w[4 6 7 8]
+  end
+
+  it 'can get a second page of a timeline' do
+    payload = {
+      follow_params: {
+        follower_id: 2
+      },
+      followee_tweet_ids: [1, 2, 3, 4]
+    }.to_json
+    merge_into_timeline(JSON.parse(payload))
+    resp = (get '/timeline?user_id=2&page_num=2&page_size=2').body
+    JSON.parse(resp).must_equal %w[3 4]
   end
 end

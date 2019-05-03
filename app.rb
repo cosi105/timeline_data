@@ -27,10 +27,11 @@ rabbit.start
 channel = rabbit.create_channel
 RABBIT_EXCHANGE = channel.default_exchange
 
-follower_ids = channel.queue('new_tweet.follower_ids')
+follower_ids = channel.queue('new_tweet.follower_ids.timeline_data')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
 seed = channel.queue('timeline.data.seed.timeline_data')
 cache_purge = channel.queue('cache.purge.timeline_data')
+SORTED_TWEETS = channel.queue('new_follow.sorted_tweets')
 
 seed.subscribe(block: false) do |delivery_info, properties, body|
   seed_to_timelines(JSON.parse(body))
@@ -77,5 +78,15 @@ def merge_into_timeline(body)
     follower_id: follower_id,
     sorted_tweet_ids: shard.zrange(follower_id, 0, -1)
   }.to_json
-  RABBIT_EXCHANGE.publish(payload, routing_key: 'new_follow.sorted_tweets')
+  RABBIT_EXCHANGE.publish(payload, routing_key: SORTED_TWEETS.name)
+end
+
+get '/timeline' do
+  user_id = params[:user_id].to_i
+  page_num = params[:page_num].to_i
+  page_size = params[:page_size].to_i
+
+  start = page_size * (page_num - 1)
+  finish = page_size * page_num
+  get_shard(user_id).zrange(user_id, start, finish - 1).to_json
 end
