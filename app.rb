@@ -6,7 +6,6 @@ require 'bundler'
 require 'json'
 Bundler.require
 require './cache_seeder'
-require 'pry-byebug'
 
 set :port, 8082 unless Sinatra::Base.production?
 
