@@ -5,6 +5,8 @@
 require 'bundler'
 require 'json'
 Bundler.require
+require './cache_seeder'
+require 'pry-byebug'
 
 set :port, 8082 unless Sinatra::Base.production?
 
@@ -29,13 +31,8 @@ RABBIT_EXCHANGE = channel.default_exchange
 
 follower_ids = channel.queue('new_tweet.follower_ids.timeline_data')
 new_follow_timeline_data = channel.queue('new_follow.timeline_data')
-seed = channel.queue('timeline.data.seed.timeline_data')
 cache_purge = channel.queue('cache.purge.timeline_data')
 SORTED_TWEETS = channel.queue('new_follow.sorted_tweets')
-
-seed.subscribe(block: false) do |delivery_info, properties, body|
-  seed_to_timelines(JSON.parse(body))
-end
 
 cache_purge.subscribe(block: false) { SHARDS.each(&:flushall) }
 
@@ -50,14 +47,6 @@ end
 
 def get_shard(owner_id)
   SHARDS[owner_id % 4]
-end
-
-def seed_to_timelines(body)
-  owner_id = body['owner_id'].to_i
-  sorted_tweet_ids = body['sorted_tweets'].map { |t| t['tweet_id'].to_i }
-  shard = get_shard(owner_id)
-  sorted_tweet_ids.each { |i| shard.zadd(owner_id.to_i, i, i) }
-  puts "Seeded timeline for user #{owner_id}"
 end
 
 # Adds a new Tweet's ID to each follower's Timeline Tweet IDs in Redis.

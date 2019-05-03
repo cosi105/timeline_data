@@ -77,39 +77,6 @@ describe 'NanoTwitter Timeline Data' do
     get_timeline(2).must_equal %w[1 2 3]
   end
 
-  it 'can seed many timelines' do
-    [
-      {
-        owner_id: 2,
-        sorted_tweets: [1, 2, 3].map { |i| { tweet_id: i } }
-      }, {
-        owner_id: 3,
-        sorted_tweets: [4, 6, 7, 8].map { |i| { tweet_id: i } }
-      }
-    ].each { |timeline| seed_to_timelines(JSON.parse(timeline.to_json)) }
-    SHARDS[2].keys.must_equal ['2']
-    SHARDS[3].keys.must_equal ['3']
-    get_timeline(2).must_equal %w[1 2 3]
-    get_timeline(3).must_equal %w[4 6 7 8]
-  end
-
-  it 'can seed many timelines from queue' do
-    [
-      {
-        owner_id: 2,
-        sorted_tweets: [1, 2, 3].map { |i| { tweet_id: i } }
-      }, {
-        owner_id: 3,
-        sorted_tweets: [4, 6, 7, 8].map { |i| { tweet_id: i } }
-      }
-    ].each { |timeline| RABBIT_EXCHANGE.publish(timeline.to_json, routing_key: 'timeline.data.seed.timeline_data') }
-    sleep 10
-    SHARDS[2].keys.must_equal ['2']
-    SHARDS[3].keys.must_equal ['3']
-    get_timeline(2).must_equal %w[1 2 3]
-    get_timeline(3).must_equal %w[4 6 7 8]
-  end
-
   it 'can get a second page of a timeline' do
     payload = {
       follow_params: {
