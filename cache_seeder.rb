@@ -6,7 +6,7 @@ post '/seed' do
   whole_csv = CSV.read(open(params[:csv_url]))
   whole_csv.each do |line|
     key = line[0]
-    values = line.map { |a| [a.to_i, a.to_i] }
+    values = line.drop(1).map { |a| [a.to_i, a.to_i] }
     get_shard(key.to_i).zadd(key, values)
   end
   puts 'Seeded all caches!'

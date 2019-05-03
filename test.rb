@@ -88,4 +88,13 @@ describe 'NanoTwitter Timeline Data' do
     resp = (get '/timeline?user_id=2&page_num=2&page_size=2').body
     JSON.parse(resp).must_equal %w[3 4]
   end
+
+  it 'can seed data from CSV' do
+    data = [[1, 1, 2, 3], [2, 1, 3]]
+    CSV.open('temp.csv', 'wb') { |csv| data.each { |row| csv << row}}
+    post '/seed', csv_url: './temp.csv'
+    File.delete('temp.csv')
+    get_shard(1).zrange(1, 0, -1).must_equal %w[1 2 3]
+    get_shard(2).zrange(2, 0, -1).must_equal %w[1 3]
+  end
 end
