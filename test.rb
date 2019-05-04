@@ -97,4 +97,51 @@ describe 'NanoTwitter Timeline Data' do
     get_shard(1).zrange(1, 0, -1).must_equal %w[1 2 3]
     get_shard(2).zrange(2, 0, -1).must_equal %w[1 3]
   end
+
+  it 'can remove tweets after unfollow' do
+    payload = {
+      follow_params: {
+        follower_id: 2
+      },
+      followee_tweet_ids: [2, 1, 3]
+    }.to_json
+    merge_into_timeline(JSON.parse(payload))
+    SHARDS[2].keys.must_equal ['2']
+    get_timeline(2).must_equal %w[1 2 3]
+
+    unfollow_payload = {
+      follow_params: {
+        follower_id: 2,
+        remove: true
+      },
+      followee_tweet_ids: [2, 1, 3]
+    }.to_json    
+    merge_into_timeline(JSON.parse(unfollow_payload))
+    SHARDS[2].keys.must_equal []
+    get_timeline(2).must_equal []
+  end
+
+  it 'can remove tweets after unfollow from queue' do
+    payload = {
+      follow_params: {
+        follower_id: 2
+      },
+      followee_tweet_ids: [2, 1, 3]
+    }.to_json
+    merge_into_timeline(JSON.parse(payload))
+    SHARDS[2].keys.must_equal ['2']
+    get_timeline(2).must_equal %w[1 2 3]
+
+    unfollow_payload = {
+      follow_params: {
+        follower_id: 2,
+        remove: true
+      },
+      followee_tweet_ids: [2, 1, 3]
+    }.to_json    
+    publish_new_follow(unfollow_payload)
+    sleep 3
+    SHARDS[2].keys.must_equal []
+    get_timeline(2).must_equal []
+  end
 end

@@ -56,12 +56,18 @@ def fanout_to_timelines(body)
   end
 end
 
-# Adds new followee's Tweets to follower's imeline Tweet IDs in Redis.
+# Adds new followee's Tweets to follower's Timeline Tweet IDs in Redis.
 def merge_into_timeline(body)
   follower_id = body['follow_params']['follower_id'].to_i
-  tweet_entries = body['followee_tweet_ids'].map(&:to_i).map { |tweet_id| [tweet_id, tweet_id] } # Tweet_id as sorting "score" preserves chronology
+  tweet_entries = body['followee_tweet_ids'].map(&:to_i)
   shard = get_shard(follower_id)
-  shard.zadd(follower_id, tweet_entries) # Bulk add
+
+  if body['follow_params']['remove']
+    shard.zrem(follower_id, tweet_entries) # Bulk remove from sorted set
+  else
+    shard.zadd(follower_id, tweet_entries.map { |tweet_id| [tweet_id, tweet_id] }) # Bulk add to sorted set
+  end
+
   payload = {
     follower_id: follower_id,
     sorted_tweet_ids: shard.zrange(follower_id, 0, -1)
